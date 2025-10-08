@@ -20,7 +20,7 @@ def push_to_github():
         print("⚠️ GITHUB_TOKEN не установлен, пропускаю пуш")
         return
 
-    repo = "vsachilov/stepper-bot"  # ⚠️ замени на свой репозиторий
+    repo = "UbiwanKenobi/Stepper-bot"  # ⚠️ замени на свой репозиторий
     path = "data.json"
     message = "Обновление данных шагов"
 
