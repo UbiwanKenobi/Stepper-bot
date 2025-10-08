@@ -1,6 +1,8 @@
 import os
 import json
 import re
+import base64
+import requests
 from pathlib import Path
 from filelock import FileLock
 import logging
@@ -9,6 +11,46 @@ import csv
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
+
+
+def push_to_github():
+    """Заливает data.json в твой GitHub"""
+    token = os.getenv("GITHUB_TOKEN")
+    if not token:
+        print("⚠️ GITHUB_TOKEN не установлен, пропускаю пуш")
+        return
+
+    repo = "vsachilov/stepper-bot"  # ⚠️ замени на свой репозиторий
+    path = "data.json"
+    message = "Обновление данных шагов"
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        content_b64 = base64.b64encode(content.encode("utf-8")).decode("utf-8")
+
+        url = f"https://api.github.com/repos/{repo}/contents/{path}"
+        headers = {"Authorization": f"token {token}"}
+
+        r = requests.get(url, headers=headers)
+        sha = r.json().get("sha")
+
+        data = {
+            "message": message,
+            "content": content_b64,
+            "branch": "main",
+        }
+        if sha:
+            data["sha"] = sha
+
+        response = requests.put(url, headers=headers, json=data)
+        if response.status_code in (200, 201):
+            print("✅ Данные успешно сохранены в GitHub")
+        else:
+            print("❌ Ошибка при сохранении в GitHub:", response.text)
+    except Exception as e:
+        print("❌ Ошибка при пуше в GitHub:", e)
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -76,6 +118,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data[user_id]["records"].append({"date": date_str, "steps": steps})
 
     save_data(data)
+    push_to_github()
     await update.message.reply_text(f"✅ Записал {steps} шагов за {date_obj.strftime('%d.%m.%y')} для {username}")
 
 # --- команды ---
